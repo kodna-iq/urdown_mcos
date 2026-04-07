@@ -140,6 +140,20 @@ workflows:
           dart run build_runner build \
             --delete-conflicting-outputs
 
+
+      # FIX: The pbxproj groups Flutter-Debug/Release.xcconfig inside a
+      # `path = Configs` group, so Xcode resolves them as
+      # Flutter/Configs/Flutter-*.xcconfig. But Flutter only generates these
+      # files directly inside Flutter/. Solution: create Flutter/Configs/
+      # and write xcconfig files that re-include the generated one at the
+      # correct relative path.
+      - name: Fix xcconfig paths — create Flutter/Configs/
+        script: |
+          mkdir -p macos/Flutter/Configs
+          printf '#include "../ephemeral/Flutter-Generated.xcconfig"\n'             > macos/Flutter/Configs/Flutter-Release.xcconfig
+          printf '#include "../ephemeral/Flutter-Generated.xcconfig"\n'             > macos/Flutter/Configs/Flutter-Debug.xcconfig
+          echo "Flutter/Configs/ xcconfig files created ✓"
+
       - name: Pod install
         script: |
           # Pin gems for CocoaPods compatibility:
@@ -157,7 +171,14 @@ workflows:
 
       - name: Build macOS
         script: |
-          flutter build macos --release
+          # Generate flutter ephemeral files (xcconfig, plugin registrant)
+          # without triggering flutter's internal pod install.
+          flutter build macos --config-only --release 2>/dev/null || true
+
+          # Build with xcodebuild using the already-installed Pods workspace.
+          # This avoids flutter re-running pod install (which would overwrite
+          # the Pods/ from our manual step and lose the xcfilelist files).
+          xcodebuild             -workspace macos/Runner.xcworkspace             -scheme Runner             -configuration Release             -derivedDataPath build/macos/DerivedData             SYMROOT="$(pwd)/build/macos/Build/Products"             CODE_SIGNING_ALLOWED=NO             | xcpretty || xcodebuild             -workspace macos/Runner.xcworkspace             -scheme Runner             -configuration Release             -derivedDataPath build/macos/DerivedData             SYMROOT="$(pwd)/build/macos/Build/Products"             CODE_SIGNING_ALLOWED=NO
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
