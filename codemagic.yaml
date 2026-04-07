@@ -180,8 +180,22 @@ workflows:
           # the Pods/ from our manual step and lose the xcfilelist files).
           xcodebuild             -workspace macos/Runner.xcworkspace             -scheme Runner             -configuration Release             -derivedDataPath build/macos/DerivedData             SYMROOT="$(pwd)/build/macos/Build/Products"             CODE_SIGNING_ALLOWED=NO             | xcpretty || xcodebuild             -workspace macos/Runner.xcworkspace             -scheme Runner             -configuration Release             -derivedDataPath build/macos/DerivedData             SYMROOT="$(pwd)/build/macos/Build/Products"             CODE_SIGNING_ALLOWED=NO
 
+      - name: Package app as zip
+        script: |
+          cd build/macos/Build/Products/Release
+          APP=$(ls -d *.app 2>/dev/null | head -1)
+          if [ -n "$APP" ]; then
+            zip -r "urdown_macos.zip" "$APP"
+            echo "✅ Created urdown_macos.zip from $APP"
+          else
+            echo "⚠️ No .app found, listing directory:"
+            ls -la
+          fi
+
     artifacts:
       - build/macos/Build/Products/Release/*.app
+      - build/macos/Build/Products/Release/*.zip
+      - build/macos/Build/Products/Release/**/*.app
 
     publishing:
       email:
