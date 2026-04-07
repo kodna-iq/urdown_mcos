@@ -182,20 +182,47 @@ workflows:
 
       - name: Package app as zip
         script: |
-          cd build/macos/Build/Products/Release
-          APP=$(ls -d *.app 2>/dev/null | head -1)
-          if [ -n "$APP" ]; then
-            zip -r "urdown_macos.zip" "$APP"
-            echo "✅ Created urdown_macos.zip from $APP"
+          echo "=== Searching for .app in all build directories ==="
+          find . -name "*.app" -type d 2>/dev/null | head -20
+          echo "=== build/macos contents ==="
+          find build/macos -maxdepth 6 -type d 2>/dev/null | head -30
+
+          # Try multiple known output paths
+          APP_PATH=""
+          for DIR in \
+            "build/macos/Build/Products/Release" \
+            "build/macos/Build/Products/Release-macos" \
+            "build/macos/DerivedData/Build/Products/Release" \
+            "$(find build -name '*.app' -type d 2>/dev/null | head -1 | xargs dirname 2>/dev/null)"; do
+            if [ -d "$DIR" ]; then
+              FOUND=$(ls -d "$DIR"/*.app 2>/dev/null | head -1)
+              if [ -n "$FOUND" ]; then
+                APP_PATH="$FOUND"
+                echo "✅ Found app at: $APP_PATH"
+                break
+              fi
+            fi
+          done
+
+          if [ -n "$APP_PATH" ]; then
+            OUTPUT_DIR=$(dirname "$APP_PATH")
+            cd "$OUTPUT_DIR"
+            APP_NAME=$(basename "$APP_PATH")
+            zip -r "urdown_macos.zip" "$APP_NAME"
+            echo "✅ Created urdown_macos.zip"
+            ls -lh urdown_macos.zip
           else
-            echo "⚠️ No .app found, listing directory:"
-            ls -la
+            echo "❌ Could not find any .app — full build tree:"
+            find build -type d | head -50
           fi
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
       - build/macos/Build/Products/Release/*.zip
       - build/macos/Build/Products/Release/**/*.app
+      - build/**/Release/*.app
+      - build/**/Release/*.zip
+      - "**/*.zip"
 
     publishing:
       email:
