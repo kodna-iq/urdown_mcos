@@ -1,0 +1,171 @@
+workflows:
+  macos-workflow:
+    name: macOS Build
+    max_build_duration: 60
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: 1.14.3
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Download macOS binaries
+        script: |
+          mkdir -p assets/binaries/macos
+          curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
+            -o assets/binaries/macos/yt-dlp
+          chmod +x assets/binaries/macos/yt-dlp
+          curl -L https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip \
+            -o /tmp/ffmpeg.zip
+          unzip -o /tmp/ffmpeg.zip -d /tmp/ffmpeg_extracted
+          cp /tmp/ffmpeg_extracted/ffmpeg assets/binaries/macos/ffmpeg
+          chmod +x assets/binaries/macos/ffmpeg
+          curl -L https://evermeet.cx/ffmpeg/getrelease/ffprobe/zip \
+            -o /tmp/ffprobe.zip
+          unzip -o /tmp/ffprobe.zip -d /tmp/ffprobe_extracted
+          cp /tmp/ffprobe_extracted/ffprobe assets/binaries/macos/ffprobe
+          chmod +x assets/binaries/macos/ffprobe
+          ls -lh assets/binaries/macos/
+
+      # FIXED: Do NOT delete the macos/ folder. It contains custom
+      # MainFlutterWindow.swift, Main.storyboard, AppIcon assets, and
+      # Info.plist. Wiping it with flutter create replaces everything with
+      # a stock template → blank window + wrong icon on every build.
+      # We only overwrite the entitlement files and patch the Podfile.
+      - name: Restore macOS entitlements
+        script: |
+          cat > macos/Runner/DebugProfile.entitlements << 'ENTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.security.app-sandbox</key>
+            <false/>
+            <key>com.apple.security.cs.allow-jit</key>
+            <true/>
+            <key>com.apple.security.network.client</key>
+            <true/>
+            <key>com.apple.security.network.server</key>
+            <true/>
+            <key>com.apple.security.files.user-selected.read-write</key>
+            <true/>
+            <key>com.apple.security.files.downloads.read-write</key>
+            <true/>
+          </dict>
+          </plist>
+          ENTEOF
+          cat > macos/Runner/Release.entitlements << 'ENTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.security.app-sandbox</key>
+            <false/>
+            <key>com.apple.security.network.client</key>
+            <true/>
+            <key>com.apple.security.files.user-selected.read-write</key>
+            <true/>
+            <key>com.apple.security.files.downloads.read-write</key>
+            <true/>
+          </dict>
+          </plist>
+          ENTEOF
+
+      # FIX: Remove the RunnerTests target from Podfile.
+      # Runner.xcodeproj has no RunnerTests PBXNativeTarget, so CocoaPods
+      # aborts with "[!] Unable to find a target named `RunnerTests`".
+      - name: Fix Podfile — remove missing RunnerTests target
+        script: |
+          python3 - << 'PYEOF'
+          import re, pathlib
+          podfile = pathlib.Path('macos/Podfile')
+          text = podfile.read_text()
+          # Remove the RunnerTests target block (including its `inherit!` line)
+          cleaned = re.sub(
+              r'\s*target\s+[\'"]RunnerTests[\'"]\s+do.*?end',
+              '',
+              text,
+              flags=re.DOTALL,
+          )
+          podfile.write_text(cleaned)
+          print("Podfile patched — RunnerTests block removed")
+          PYEOF
+
+      # FIX: Bump macOS deployment target to 10.15 in both Podfile and
+      # project.pbxproj.
+      # audioplayers_darwin 6.x (and several other modern plugins) require
+      # macOS >= 10.15. Without this patch, pod install fails with:
+      #   [!] CocoaPods could not find compatible versions for pod
+      #   "audioplayers_darwin" … required a higher minimum deployment target.
+      - name: Fix deployment target — bump to 10.15
+        script: |
+          python3 - << 'PYEOF'
+          import re, pathlib
+
+          # Patch Podfile platform line
+          podfile = pathlib.Path('macos/Podfile')
+          text = podfile.read_text()
+          patched = re.sub(r"platform :osx, '[0-9.]+'" , "platform :osx, '10.15'", text)
+          podfile.write_text(patched)
+          print("Podfile platform line →", re.search(r"platform :osx, '[0-9.]+'", patched).group())
+
+          # Patch pbxproj MACOSX_DEPLOYMENT_TARGET
+          pbxproj = pathlib.Path('macos/Runner.xcodeproj/project.pbxproj')
+          text = pbxproj.read_text()
+          patched, n = re.subn(r'MACOSX_DEPLOYMENT_TARGET = [0-9.]+', 'MACOSX_DEPLOYMENT_TARGET = 10.15', text)
+          pbxproj.write_text(patched)
+          print(f"pbxproj: {n} MACOSX_DEPLOYMENT_TARGET entries set to 10.15")
+          PYEOF
+
+      # FIX: Ensure Info.plist has CFBundleIconFile set (fixes wrong/missing icon).
+      - name: Fix Info.plist — set CFBundleIconFile
+        script: |
+          python3 - << 'PYEOF'
+          import re, pathlib
+          plist = pathlib.Path('macos/Runner/Info.plist')
+          text = plist.read_text()
+          # Replace empty CFBundleIconFile string with AppIcon
+          fixed = re.sub(
+              r'(<key>CFBundleIconFile</key>\s*<string>)(</string>)',
+              r'\1AppIcon\2',
+              text,
+          )
+          plist.write_text(fixed)
+          print("Info.plist patched — CFBundleIconFile set to AppIcon")
+          PYEOF
+
+      - name: Generate Isar code
+        script: |
+          dart run build_runner build \
+            --delete-conflicting-outputs
+
+      - name: Pod install
+        script: |
+          # Pin gems for CocoaPods compatibility:
+          # - activesupport 7.1+ removed 'present?' used by CocoaPods internals
+          # - CocoaPods 1.15.x has 'undefined method map for nil' in repo-update
+          #   so we pin to 1.14.3 (also set in environment above as a hint,
+          #   but gem install here ensures the correct version is active)
+          gem install cocoapods -v '1.14.3' --no-document
+          gem install xcodeproj -v '1.26.0' --no-document
+          gem install activesupport -v '~> 7.0.8' --no-document
+          rm -rf macos/Pods macos/Podfile.lock
+          # Run repo-update separately so a failure here is easier to diagnose,
+          # then install without --repo-update to use the freshly updated cache.
+          cd macos && pod repo update && pod install
+
+      - name: Build macOS
+        script: |
+          flutter build macos --release
+
+    artifacts:
+      - build/macos/Build/Products/Release/*.app
+
+    publishing:
+      email:
+        recipients:
+          - kodna.iq@gmail.com
+        notify:
+          success: true
+          failure: true

@@ -1,0 +1,75 @@
+name: urdown
+description: UrDown — Download the World, Rooted in Ur. Powered by yt-dlp and ffmpeg.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # ── State management ────────────────────────────────────────────────────
+  flutter_riverpod: ^2.5.1
+
+  # ── Navigation ──────────────────────────────────────────────────────────
+  go_router: ^14.2.0
+
+  # ── Database ────────────────────────────────────────────────────────────
+  isar: ^3.1.0+1
+  isar_flutter_libs: ^3.1.0+1
+
+  # ── Persistence ─────────────────────────────────────────────────────────
+  shared_preferences: ^2.3.2
+
+  # ── HTTP / Networking ────────────────────────────────────────────────────
+  http: ^1.2.2
+
+  # ── Cryptography — SHA-256 checksum for auto-update verification ─────────
+  crypto: ^3.0.3
+
+  # ── Window management — custom title bar ─────────────────────────────────
+  window_manager: ^0.3.8
+
+  # ── File / Path utilities ────────────────────────────────────────────────
+  path: ^1.9.0
+  path_provider: ^2.1.4
+  file_picker: ^8.1.2
+
+  # ── Media / Image ────────────────────────────────────────────────────────
+  cached_network_image: ^3.4.1
+
+  # ── Audio (download-complete sound) ──────────────────────────────────────
+  audioplayers: ^6.1.0
+
+  # ── URL launcher ─────────────────────────────────────────────────────────
+  url_launcher: ^6.3.0
+
+  # ── Date formatting ──────────────────────────────────────────────────────
+  intl: ^0.20.2
+
+  # ── Unique IDs ───────────────────────────────────────────────────────────
+  uuid: ^4.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  isar_generator: ^3.1.0+1
+  build_runner: ^2.4.12
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sounds/DHD.mp3
+    - assets/app_icon.png
+    - assets/icon.svg
+    - assets/binaries/macos/yt-dlp
+    - assets/binaries/macos/ffmpeg
+    - assets/binaries/macos/ffprobe
