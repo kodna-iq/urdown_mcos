@@ -46,8 +46,8 @@ workflows:
           pod install --repo-update
           cd ..
 
-          # Step 3: Force arm64, build — pods already installed so flutter skips pod install
-          export FLUTTER_XCODE_ARCHS=arm64
+          # Step 3: Build Universal Binary (arm64 + x86_64) — works on Apple Silicon AND Intel/VirtualBox
+          export FLUTTER_XCODE_ARCHS="arm64 x86_64"
           flutter build macos --release
 
           # Step 4: Verify and package
