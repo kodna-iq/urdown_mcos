@@ -42,7 +42,6 @@ workflows:
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
-          echo "=== xcfilelist check ==="
           find Pods -name "*.xcfilelist" | head -20
 
       - name: Build with xcodebuild
@@ -58,22 +57,24 @@ workflows:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
-          echo "=== Build output ==="
-          find ../build/macos/DerivedData -name "*.app" -type d | head -5
+          echo "=== Finding .app ==="
+          find ../build -name "*.app" -type d
 
-      - name: Copy app to standard location
+      - name: Package and move app
         script: |
-          mkdir -p build/macos/Build/Products/Release
-          APP=$(find build/macos/DerivedData -name "*.app" -type d | head -1)
+          APP=$(find build -name "*.app" -type d | head -1)
+          echo "Found: $APP"
           if [ -n "$APP" ]; then
+            mkdir -p build/macos/Build/Products/Release
             cp -r "$APP" build/macos/Build/Products/Release/
-            echo "✅ App copied: $APP"
-          else
-            echo "❌ No .app found"
-            find build/macos -type d | head -20
+            cd build/macos/Build/Products/Release
+            zip -r urdown_macos.zip *.app
+            echo "✅ Done"
+            ls -lh
           fi
 
     artifacts:
+      - build/macos/Build/Products/Release/urdown_macos.zip
       - build/macos/Build/Products/Release/*.app
 
     publishing:
