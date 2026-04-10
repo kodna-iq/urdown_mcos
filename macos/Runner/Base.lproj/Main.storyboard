@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="14490.70" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
+<document type="com.apple.InterfaceBuilder3.Cocoa.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" initialViewController="B8D-0N-5wS">
    <dependencies>
       <deployment identifier="macosx"/>
-      <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="14490.70"/>
+      <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23504"/>
       <capability name="App Extras" minToolsVersion="9.0"/>
    </dependencies>
    <scenes>
@@ -18,7 +18,7 @@
                            <items>
                               <menuItem title="Quit UrDown" keyEquivalent="q" id="4sb-4s-VLi">
                                  <connections>
-                                    <action selector="terminate:" target="-1" id="Te7-pn-YzF"/>
+                                    <action selector="terminate:" target="Voe-Tx-rLC" id="Te7-pn-YzF"/>
                                  </connections>
                               </menuItem>
                            </items>
@@ -30,33 +30,33 @@
                            <items>
                               <menuItem title="Undo" keyEquivalent="z" id="dRJ-4n-Yzg">
                                  <connections>
-                                    <action selector="undo:" target="-1" id="M6e-cu-g7V"/>
+                                    <action selector="undo:" target="Voe-Tx-rLC" id="M6e-cu-g7V"/>
                                  </connections>
                               </menuItem>
                               <menuItem title="Redo" keyEquivalent="Z" id="6dh-zS-Vam">
                                  <connections>
-                                    <action selector="redo:" target="-1" id="oIA-Rs-6OD"/>
+                                    <action selector="redo:" target="Voe-Tx-rLC" id="oIA-Rs-6OD"/>
                                  </connections>
                               </menuItem>
                               <menuItem isSeparatorItem="YES" id="WRV-NI-Exz"/>
                               <menuItem title="Cut" keyEquivalent="x" id="uRl-iY-unG">
                                  <connections>
-                                    <action selector="cut:" target="-1" id="Xdh-am-Qxt"/>
+                                    <action selector="cut:" target="Voe-Tx-rLC" id="Xdh-am-Qxt"/>
                                  </connections>
                               </menuItem>
                               <menuItem title="Copy" keyEquivalent="c" id="f9b-iY-nNO">
                                  <connections>
-                                    <action selector="copy:" target="-1" id="9sg-kL-RTX"/>
+                                    <action selector="copy:" target="Voe-Tx-rLC" id="9sg-kL-RTX"/>
                                  </connections>
                               </menuItem>
                               <menuItem title="Paste" keyEquivalent="v" id="GeY-pK-dns">
                                  <connections>
-                                    <action selector="paste:" target="-1" id="O1W-xB-aGT"/>
+                                    <action selector="paste:" target="Voe-Tx-rLC" id="O1W-xB-aGT"/>
                                  </connections>
                               </menuItem>
                               <menuItem title="Select All" keyEquivalent="a" id="Ruw-6m-B2W">
                                  <connections>
-                                    <action selector="selectAll:" target="-1" id="VNm-Mi-diN"/>
+                                    <action selector="selectAll:" target="Voe-Tx-rLC" id="VNm-Mi-diN"/>
                                  </connections>
                               </menuItem>
                            </items>
@@ -69,7 +69,7 @@
                               <menuItem title="Enter Full Screen" keyEquivalent="f" id="4J7-dP-txa">
                                  <modifierMask key="keyEquivalentModifierMask" control="YES" command="YES"/>
                                  <connections>
-                                    <action selector="toggleFullScreen:" target="-1" id="dU3-MA-1Rq"/>
+                                    <action selector="toggleFullScreen:" target="Voe-Tx-rLC" id="dU3-MA-1Rq"/>
                                  </connections>
                               </menuItem>
                            </items>
@@ -81,18 +81,18 @@
                            <items>
                               <menuItem title="Minimize" keyEquivalent="m" id="OY7-WF-poV">
                                  <connections>
-                                    <action selector="performMiniaturize:" target="-1" id="VwT-WD-YPe"/>
+                                    <action selector="performMiniaturize:" target="Voe-Tx-rLC" id="VwT-WD-YPe"/>
                                  </connections>
                               </menuItem>
                               <menuItem title="Zoom" id="R4o-n2-Eq4">
                                  <connections>
-                                    <action selector="performZoom:" target="-1" id="DIl-cC-cCs"/>
+                                    <action selector="performZoom:" target="Voe-Tx-rLC" id="DIl-cC-cCs"/>
                                  </connections>
                               </menuItem>
                               <menuItem isSeparatorItem="YES" id="eu3-7i-yIM"/>
                               <menuItem title="Bring All to Front" id="LE2-aR-0XJ">
                                  <connections>
-                                    <action selector="arrangeInFront:" target="-1" id="DRN-fu-gQh"/>
+                                    <action selector="arrangeInFront:" target="Voe-Tx-rLC" id="DRN-fu-gQh"/>
                                  </connections>
                               </menuItem>
                            </items>
@@ -106,9 +106,7 @@
             </application>
             <customObject id="Voe-Tx-rLC" customClass="AppDelegate" customModule="Runner" customModuleProvider="target"/>
             <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
-            <customObject id="-1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            <customObject id="-2" userLabel="Application" sceneMemberID="application"/>
-            <customObject id="B8D-0N-5wS" userLabel="Application Scene" customClass="NSObject" sceneMemberID="viewController"/>
+            <customObject id="Ady-hI-5V9" userLabel="First Responder" sceneMemberID="firstResponder"/>
          </objects>
          <point key="canvasLocation" x="75" y="0.0"/>
       </scene>
@@ -129,8 +127,7 @@
                   <segue destination="QvC-M9-y7g" kind="relationship" relationship="window.shadowedContentViewController" id="cq2-FE-JQM"/>
                </connections>
             </windowController>
-            <customObject id="-1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            <customObject id="-2" userLabel="Application" sceneMemberID="application"/>
+            <customObject id="Rmy-F5-Kxs" userLabel="First Responder" sceneMemberID="firstResponder"/>
          </objects>
          <point key="canvasLocation" x="75" y="250"/>
       </scene>
@@ -142,8 +139,7 @@
                   <outlet property="view" destination="EiT-Mj-1SZ" id="Y6b-PE-GLa"/>
                </connections>
             </viewController>
-            <customObject id="-1" userLabel="First Responder" sceneMemberID="firstResponder"/>
-            <customObject id="-2" userLabel="Application" sceneMemberID="application"/>
+            <customObject id="Kni-m5-Eef" userLabel="First Responder" sceneMemberID="firstResponder"/>
             <view id="EiT-Mj-1SZ"/>
          </objects>
          <point key="canvasLocation" x="75" y="500"/>
