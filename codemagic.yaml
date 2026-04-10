@@ -31,20 +31,6 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Flutter generate ephemeral files
-        script: |
-          flutter build macos --config-only --release
-          echo "✅ Flutter-Generated.xcconfig:"
-          cat macos/Flutter/ephemeral/Flutter-Generated.xcconfig
-
-      - name: Pod install
-        script: |
-          set -e
-          cd macos
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
-          echo "✅ Pod install done"
-
       - name: Build macOS
         script: |
           flutter build macos --release
