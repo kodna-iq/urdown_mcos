@@ -8,7 +8,9 @@ workflows:
       cocoapods: default
     scripts:
       - name: Flutter pub get
-        script: flutter pub get
+        script: |
+          flutter pub get
+          flutter precache --macos
 
       - name: Download macOS binaries
         script: |
@@ -31,9 +33,39 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
+      - name: Setup Flutter ephemeral & Pod install
+        script: |
+          set -e
+          # Step 1: Generate Flutter ephemeral config files
+          flutter build macos --config-only --release
+          echo "✅ Flutter ephemeral files generated:"
+          ls macos/Flutter/ephemeral/ || echo "No ephemeral dir!"
+
+          # Step 2: Install Pods (MUST be before xcodebuild)
+          cd macos
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
+          echo "✅ Pods installed"
+          ls "Pods/Target Support Files/Pods-Runner/" || true
+          cd ..
+
       - name: Build macOS
         script: |
-          flutter build macos --release
+          set -e
+          FLUTTER_ROOT=$(dirname $(dirname $(which flutter)))
+          echo "FLUTTER_ROOT=$FLUTTER_ROOT"
+
+          xcodebuild \
+            -workspace macos/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -derivedDataPath build/macos \
+            FLUTTER_ROOT="$FLUTTER_ROOT" \
+            FLUTTER_APPLICATION_PATH="$(pwd)" \
+            VERBOSE_SCRIPT_LOGGING=YES \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
