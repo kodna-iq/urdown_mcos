@@ -37,34 +37,14 @@ workflows:
 
       - name: Pod install
         script: |
+          set -e
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
           echo "✅ Pod install done"
-          echo "📂 Pods xcconfig files:"
-          ls "Pods/Target Support Files/Pods-Runner/" 2>/dev/null || echo "No xcconfig dir found"
-
-      - name: Verify and patch xcfilelists
-        script: |
-          PODS_DIR="$PWD/macos/Pods/Target Support Files/Pods-Runner"
-
-          # Create any missing xcfilelist files (safety net)
-          mkdir -p "$PODS_DIR"
-          for config in Debug Release; do
-            for type in input output; do
-              f="$PODS_DIR/Pods-Runner-frameworks-${config}-${type}-files.xcfilelist"
-              [ -f "$f" ] || { touch "$f"; echo "Created: $f"; }
-              f="$PODS_DIR/Pods-Runner-resources-${config}-${type}-files.xcfilelist"
-              [ -f "$f" ] || { touch "$f"; echo "Created: $f"; }
-            done
-          done
-
-          echo "✅ xcfilelist files:"
-          ls "$PODS_DIR/"*.xcfilelist 2>/dev/null
-
-          echo ""
-          echo "✅ Pods-Runner xcconfig files:"
-          ls "$PODS_DIR/"*.xcconfig 2>/dev/null || echo "⚠️ No xcconfig found - pod install may have failed"
+          echo "📂 Pods-Runner xcconfig files:"
+          ls "Pods/Target Support Files/Pods-Runner/"
+          echo "📄 Podfile.lock exists: $(ls Podfile.lock)"
 
       - name: Build macOS
         script: |
