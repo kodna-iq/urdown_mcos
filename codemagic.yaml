@@ -5,7 +5,7 @@ workflows:
     environment:
       flutter: stable
       xcode: latest
-      cocoapods: 1.14.3
+      cocoapods: default
     scripts:
       - name: Flutter pub get
         script: flutter pub get
@@ -33,13 +33,37 @@ workflows:
           dart run build_runner build \
             --delete-conflicting-outputs
 
-      - name: Pod install
+      - name: Install latest CocoaPods and pod install
         script: |
+          sudo gem install cocoapods --no-document
+          pod --version
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
-          echo "=== xcfilelist check ==="
-          find Pods -name "*.xcfilelist" | head -10
+          echo "=== xcfilelist files ==="
+          find Pods -name "*.xcfilelist" | head -20
+
+      - name: Create missing xcfilelist files if needed
+        script: |
+          XCFL_DIR="macos/Pods/Target Support Files/Pods-Runner"
+          mkdir -p "$XCFL_DIR"
+          for f in \
+            "Pods-Runner-frameworks-Debug-input-files.xcfilelist" \
+            "Pods-Runner-frameworks-Debug-output-files.xcfilelist" \
+            "Pods-Runner-frameworks-Release-input-files.xcfilelist" \
+            "Pods-Runner-frameworks-Release-output-files.xcfilelist" \
+            "Pods-Runner-resources-Debug-input-files.xcfilelist" \
+            "Pods-Runner-resources-Debug-output-files.xcfilelist" \
+            "Pods-Runner-resources-Release-input-files.xcfilelist" \
+            "Pods-Runner-resources-Release-output-files.xcfilelist"; do
+            TARGET="$XCFL_DIR/$f"
+            if [ ! -f "$TARGET" ]; then
+              touch "$TARGET"
+              echo "Created: $TARGET"
+            fi
+          done
+          echo "=== All xcfilelist files ==="
+          ls -la "$XCFL_DIR"/*.xcfilelist
 
       - name: Build macOS
         script: |
@@ -47,7 +71,6 @@ workflows:
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
-      - build/macos/Build/Products/Release/*.zip
 
     publishing:
       email:
