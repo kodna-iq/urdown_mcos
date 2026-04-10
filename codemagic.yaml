@@ -44,7 +44,9 @@ workflows:
       - name: Build macOS
         script: |
           set -e
-          flutter build macos --release
+          # Force arm64 — Codemagic Mac mini M2 must NOT build x86_64
+          flutter build macos --release \
+            --dart-define=FLUTTER_TARGET_PLATFORM=darwin-arm64
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
           echo "✅ Build complete and zipped"

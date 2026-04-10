@@ -39,6 +39,9 @@ post_install do |installer|
       if config.build_settings['MACOSX_DEPLOYMENT_TARGET'].to_f < 10.15
         config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
       end
+      # Force arm64 only — exclude x86_64 to fix module-not-found on Codemagic M2
+      config.build_settings['EXCLUDED_ARCHS[sdk=macosx*]'] = 'x86_64'
+      config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
     end
   end
 
