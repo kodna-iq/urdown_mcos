@@ -41,4 +41,15 @@ post_install do |installer|
       end
     end
   end
+
+  # Create missing xcfilelist files required by [CP] Embed Pods Frameworks build phase
+  pods_root = installer.sandbox.root.to_s
+  xcfilelist_dir = File.join(pods_root, 'Target Support Files', 'Pods-Runner')
+  FileUtils.mkdir_p(xcfilelist_dir)
+  ['Debug', 'Release', 'Profile'].each do |config|
+    ['input', 'output'].each do |type|
+      file = File.join(xcfilelist_dir, "Pods-Runner-frameworks-#{config}-#{type}-files.xcfilelist")
+      File.write(file, '') unless File.exist?(file)
+    end
+  end
 end

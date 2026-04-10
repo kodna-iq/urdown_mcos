@@ -37,18 +37,26 @@ workflows:
         script: |
           set -e
 
-          # Force native arm64 — prevents Rosetta from defaulting to x86_64
-          export FLUTTER_XCODE_ARCHS=arm64
+          # Step 1: Generate Flutter ephemeral files (needed by Podfile to find flutter_root)
+          flutter build macos --config-only --release
 
+          # Step 2: Install pods — creates xcfilelist files via post_install hook
+          cd macos
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
+          cd ..
+
+          # Step 3: Force arm64, build — pods already installed so flutter skips pod install
+          export FLUTTER_XCODE_ARCHS=arm64
           flutter build macos --release
 
-          # Verify real size (must be > 50 MB with Flutter engine + binaries)
-          du -sh build/macos/Build/Products/Release/Runner.app
-
-          # Package
+          # Step 4: Verify and package
+          APP=build/macos/Build/Products/Release/Runner.app
+          echo "App size: $(du -sh $APP)"
+          echo "Frameworks: $(ls $APP/Contents/Frameworks/ | head -5)"
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
-          echo "✅ Done — size: $(du -sh urdown.app.zip | cut -f1)"
+          echo "✅ ZIP size: $(du -sh urdown.app.zip)"
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
