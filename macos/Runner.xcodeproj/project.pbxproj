@@ -317,9 +317,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
-				PODS_ROOT = "$(SRCROOT)/Pods";
-				PODS_CONFIGURATION_BUILD_DIR = "$(PODS_ROOT)/Build/Products/Release";
-				PODS_PODFILE_DIR_PATH = "$(SRCROOT)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -448,9 +445,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
-				PODS_ROOT = "$(SRCROOT)/Pods";
-				PODS_CONFIGURATION_BUILD_DIR = "$(PODS_ROOT)/Build/Products/Debug";
-				PODS_PODFILE_DIR_PATH = "$(SRCROOT)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;
@@ -472,9 +466,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Release.entitlements;
-				PODS_ROOT = "$(SRCROOT)/Pods";
-				PODS_CONFIGURATION_BUILD_DIR = "$(PODS_ROOT)/Build/Products/Release";
-				PODS_PODFILE_DIR_PATH = "$(SRCROOT)";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = Runner/Info.plist;

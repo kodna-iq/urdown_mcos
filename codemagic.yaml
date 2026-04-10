@@ -37,25 +37,18 @@ workflows:
         script: |
           set -e
 
-          # Show what plugins are registered (must NOT include audioplayers)
-          echo "=== pubspec plugins check ==="
-          grep -E "audioplayers|file_picker|window_manager" pubspec.yaml || true
+          # Force native arm64 — prevents Rosetta from defaulting to x86_64
+          export FLUTTER_XCODE_ARCHS=arm64
 
-          # Single clean build — flutter handles pod install + compilation correctly
           flutter build macos --release
 
-          # Verify real app size (must be >> 1 MB)
-          echo "=== App size check ==="
+          # Verify real size (must be > 50 MB with Flutter engine + binaries)
           du -sh build/macos/Build/Products/Release/Runner.app
 
-          # Verify Flutter engine is embedded
-          ls build/macos/Build/Products/Release/Runner.app/Contents/Frameworks/ | head -5
-
-          # Package for download
+          # Package
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
-          du -sh urdown.app.zip
-          echo "✅ Build complete"
+          echo "✅ Done — size: $(du -sh urdown.app.zip | cut -f1)"
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
