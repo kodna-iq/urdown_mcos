@@ -41,38 +41,30 @@ workflows:
           rm -rf Pods Podfile.lock
           pod install --repo-update
           echo "✅ Pod install done"
+          echo "📂 Pods xcconfig files:"
+          ls "Pods/Target Support Files/Pods-Runner/" 2>/dev/null || echo "No xcconfig dir found"
 
-      - name: Fix PODS_ROOT and xcfilelists
+      - name: Verify and patch xcfilelists
         script: |
-          PODS_ROOT_ABS="$PWD/macos/Pods"
-          XCCONFIG="macos/Flutter/ephemeral/Flutter-Generated.xcconfig"
+          PODS_DIR="$PWD/macos/Pods/Target Support Files/Pods-Runner"
 
-          # Inject PODS_ROOT into Flutter-Generated.xcconfig so Xcode can resolve it
-          grep -q "^PODS_ROOT=" "$XCCONFIG" || \
-            echo "PODS_ROOT=$PODS_ROOT_ABS" >> "$XCCONFIG"
-          grep -q "^PODS_CONFIGURATION_BUILD_DIR=" "$XCCONFIG" || \
-            echo "PODS_CONFIGURATION_BUILD_DIR=$PODS_ROOT_ABS/Build/Products/Release" >> "$XCCONFIG"
-
-          echo "✅ Flutter-Generated.xcconfig PODS entries:"
-          grep PODS "$XCCONFIG"
-
-          # Create all xcfilelist files in the correct absolute path Xcode expects
-          XCFILELIST_DIR="$PODS_ROOT_ABS/Target Support Files/Pods-Runner"
-          mkdir -p "$XCFILELIST_DIR"
-          for f in \
-            "Pods-Runner-frameworks-Debug-input-files.xcfilelist" \
-            "Pods-Runner-frameworks-Debug-output-files.xcfilelist" \
-            "Pods-Runner-frameworks-Release-input-files.xcfilelist" \
-            "Pods-Runner-frameworks-Release-output-files.xcfilelist" \
-            "Pods-Runner-resources-Debug-input-files.xcfilelist" \
-            "Pods-Runner-resources-Debug-output-files.xcfilelist" \
-            "Pods-Runner-resources-Release-input-files.xcfilelist" \
-            "Pods-Runner-resources-Release-output-files.xcfilelist"; do
-            [ -f "$XCFILELIST_DIR/$f" ] || touch "$XCFILELIST_DIR/$f"
+          # Create any missing xcfilelist files (safety net)
+          mkdir -p "$PODS_DIR"
+          for config in Debug Release; do
+            for type in input output; do
+              f="$PODS_DIR/Pods-Runner-frameworks-${config}-${type}-files.xcfilelist"
+              [ -f "$f" ] || { touch "$f"; echo "Created: $f"; }
+              f="$PODS_DIR/Pods-Runner-resources-${config}-${type}-files.xcfilelist"
+              [ -f "$f" ] || { touch "$f"; echo "Created: $f"; }
+            done
           done
 
-          echo "✅ xcfilelists created at: $XCFILELIST_DIR"
-          ls "$XCFILELIST_DIR/"
+          echo "✅ xcfilelist files:"
+          ls "$PODS_DIR/"*.xcfilelist 2>/dev/null
+
+          echo ""
+          echo "✅ Pods-Runner xcconfig files:"
+          ls "$PODS_DIR/"*.xcconfig 2>/dev/null || echo "⚠️ No xcconfig found - pod install may have failed"
 
       - name: Build macOS
         script: |
