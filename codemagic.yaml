@@ -40,35 +40,30 @@ workflows:
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
+          echo "✅ Pod install done"
+          ls "Pods/Target Support Files/Pods-Runner/" | grep xcfilelist
 
-      - name: Fix PODS_ROOT in project.pbxproj
+      - name: Inject PODS_ROOT into Flutter xcconfig
         script: |
-          PODS_ABS="$PWD/macos/Pods"
-          PBXPROJ="macos/Runner.xcodeproj/project.pbxproj"
-          echo "PODS_ABS = $PODS_ABS"
-          echo "=== xcfilelist refs before fix ==="
-          grep "xcfilelist" "$PBXPROJ" || echo "none found"
-          python3 - << PYEOF
-          import re, pathlib, os
-          pods_abs = os.environ.get('PODS_ABS', '$PWD/macos/Pods')
-          pbx = pathlib.Path('macos/Runner.xcodeproj/project.pbxproj')
-          text = pbx.read_text()
-          # Fix: replace "\$(PODS_ROOT)" with absolute path
-          fixed = text.replace('"$(PODS_ROOT)/Target Support Files/', f'"{pods_abs}/Target Support Files/')
-          fixed = fixed.replace('"${PODS_ROOT}/Target Support Files/', f'"{pods_abs}/Target Support Files/')
-          # Also fix relative paths
-          fixed = fixed.replace('"Target Support Files/Pods-Runner/', f'"{pods_abs}/Target Support Files/Pods-Runner/')
-          if fixed != text:
-              pbx.write_text(fixed)
-              print("Fixed PODS_ROOT references in project.pbxproj")
-          else:
-              print("No PODS_ROOT references found - checking what's there:")
-              for line in text.splitlines():
-                  if 'xcfilelist' in line or 'Target Support' in line:
-                      print(f"  {line.strip()}")
-          PYEOF
-          echo "=== xcfilelist refs after fix ==="
-          grep "xcfilelist" "$PBXPROJ" || echo "none found"
+          PODS_ROOT_ABS="$PWD/macos/Pods"
+          XCCONFIG="macos/Flutter/ephemeral/Flutter-Generated.xcconfig"
+          echo "" >> "$XCCONFIG"
+          echo "PODS_ROOT=$PODS_ROOT_ABS" >> "$XCCONFIG"
+          echo "PODS_CONFIGURATION_BUILD_DIR=$PODS_ROOT_ABS/Build/Products/Release" >> "$XCCONFIG"
+          echo "✅ Injected PODS_ROOT into Flutter-Generated.xcconfig:"
+          grep PODS "$XCCONFIG"
+
+          # Also create xcfilelist at the root path as fallback
+          sudo mkdir -p "/Target Support Files/Pods-Runner" 2>/dev/null || \
+            mkdir -p "$HOME/Target Support Files/Pods-Runner" 2>/dev/null || true
+          for f in \
+            "Pods-Runner-frameworks-Release-input-files.xcfilelist" \
+            "Pods-Runner-frameworks-Release-output-files.xcfilelist" \
+            "Pods-Runner-resources-Release-input-files.xcfilelist" \
+            "Pods-Runner-resources-Release-output-files.xcfilelist"; do
+            sudo touch "/Target Support Files/Pods-Runner/$f" 2>/dev/null || true
+            touch "$PODS_ROOT_ABS/Target Support Files/Pods-Runner/$f" 2>/dev/null || true
+          done
 
       - name: Build macOS
         script: |
