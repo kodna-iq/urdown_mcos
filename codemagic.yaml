@@ -37,38 +37,29 @@ workflows:
         script: |
           set -e
 
-          # 1. Generate Flutter ephemeral files (Flutter-Generated.xcconfig, plugin registrant, etc.)
+          # Step 1: Generate ephemeral Flutter files (Flutter-Generated.xcconfig, plugin registrant)
           flutter build macos --config-only --release
-
-          # 2. Show what was generated (for debug)
-          echo "=== GeneratedPluginRegistrant.swift ==="
+          echo "=== Plugin registrant after config-only ==="
           cat macos/Flutter/GeneratedPluginRegistrant.swift
-          echo "=== Flutter-Generated.xcconfig ==="
-          cat macos/Flutter/ephemeral/Flutter-Generated.xcconfig || true
 
-          # 3. Install CocoaPods with full plugin list now available
+          # Step 2: Pre-install pods so flutter build won't re-run pod install
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
-          echo "✅ pod install done"
+          echo "✅ Pods installed"
+          ls Pods/
           cd ..
 
-          # 4. Build with xcodebuild (skip flutter's internal pod install)
-          xcodebuild \
-            -workspace macos/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -derivedDataPath build/macos \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tail -50
+          # Step 3: Full flutter build — pods already exist so flutter skips pod install
+          flutter build macos --release
 
-          # 5. Package
-          APP_PATH=$(find build/macos/Build/Products/Release -name "*.app" -maxdepth 1 | head -1)
-          echo "App found: $APP_PATH"
-          cd "$(dirname "$APP_PATH")"
-          zip -r --symlinks urdown.app.zip "$(basename "$APP_PATH")"
+          # Step 4: Verify output size
+          du -sh build/macos/Build/Products/Release/Runner.app
+          ls -la build/macos/Build/Products/Release/Runner.app/Contents/MacOS/
+
+          # Step 5: Package
+          cd build/macos/Build/Products/Release
+          zip -r --symlinks urdown.app.zip Runner.app
           echo "✅ Build complete and zipped"
 
     artifacts:
