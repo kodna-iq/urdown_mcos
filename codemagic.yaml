@@ -36,7 +36,6 @@ workflows:
       - name: Pod install
         script: |
           set -e
-          flutter build macos --config-only --release
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
@@ -45,32 +44,14 @@ workflows:
       - name: Build macOS
         script: |
           set -e
-          # Get the real Flutter root from flutter itself
-          FLUTTER_ROOT=$(flutter --version --machine 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('flutterRoot',''))" 2>/dev/null || true)
-
-          # Fallback: find via which flutter -> resolve symlink -> go up
-          if [ -z "$FLUTTER_ROOT" ] || [ ! -f "$FLUTTER_ROOT/packages/flutter_tools/bin/macos_assemble.sh" ]; then
-            FLUTTER_BIN=$(which flutter)
-            FLUTTER_REAL=$(readlink -f "$FLUTTER_BIN" 2>/dev/null || realpath "$FLUTTER_BIN")
-            FLUTTER_ROOT=$(dirname $(dirname "$FLUTTER_REAL"))
-          fi
-
-          echo "✅ FLUTTER_ROOT=$FLUTTER_ROOT"
-          echo "✅ macos_assemble.sh exists: $(ls $FLUTTER_ROOT/packages/flutter_tools/bin/macos_assemble.sh 2>/dev/null && echo YES || echo NO)"
-
-          xcodebuild \
-            -workspace macos/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -derivedDataPath build/macos \
-            FLUTTER_ROOT="$FLUTTER_ROOT" \
-            FLUTTER_APPLICATION_PATH="$(pwd)" \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO
+          flutter build macos --release
+          cd build/macos/Build/Products/Release
+          zip -r --symlinks urdown.app.zip Runner.app
+          echo "✅ Build complete and zipped"
 
     artifacts:
-      - build/macos/Build/Products/Release/*.app
+      - build/macos/Build/Products/Release/Runner.app
+      - build/macos/Build/Products/Release/urdown.app.zip
 
     publishing:
       email:
