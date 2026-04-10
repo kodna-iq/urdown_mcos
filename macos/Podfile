@@ -1,6 +1,5 @@
 platform :osx, '10.15'
 
-# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
 project 'Runner', {
@@ -31,20 +30,28 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
-  # RunnerTests target removed — it does not exist in Runner.xcodeproj.
-  # Adding it here caused CocoaPods to abort with:
-  #   [!] Unable to find a target named `RunnerTests` in project `Runner.xcodeproj`
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
-    # Enforce minimum macOS deployment target for all pods.
-    # audioplayers_darwin 6.x requires >= 10.15; without this, pod install
-    # fails with "required a higher minimum deployment target".
     target.build_configurations.each do |config|
       if config.build_settings['MACOSX_DEPLOYMENT_TARGET'].to_f < 10.15
         config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
+      end
+    end
+  end
+
+  # Fix xcfilelist paths - create them if missing
+  pods_root = File.dirname(File.realpath(__FILE__)) + '/Pods'
+  xcfilelist_dir = "#{pods_root}/Target Support Files/Pods-Runner"
+  FileUtils.mkdir_p(xcfilelist_dir)
+  ['Debug', 'Release'].each do |config|
+    ['input', 'output'].each do |type|
+      file = "#{xcfilelist_dir}/Pods-Runner-frameworks-#{config}-#{type}-files.xcfilelist"
+      unless File.exist?(file)
+        File.write(file, '')
+        puts "Created: #{file}"
       end
     end
   end

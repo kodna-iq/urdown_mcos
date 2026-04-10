@@ -31,12 +31,56 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
+      - name: Setup Flutter engine config
+        script: |
+          flutter build macos --config-only --release || true
+
+      - name: Pod install with xcfilelist fix
+        script: |
+          cd macos
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
+          echo "=== Verifying xcfilelist files ==="
+          XCFL="Pods/Target Support Files/Pods-Runner"
+          ls -la "$XCFL/" 2>/dev/null || echo "Dir not found, creating..."
+          mkdir -p "$XCFL"
+          for cfg in Debug Release; do
+            for t in input output; do
+              f="$XCFL/Pods-Runner-frameworks-${cfg}-${t}-files.xcfilelist"
+              [ -f "$f" ] || { touch "$f"; echo "Created: $f"; }
+            done
+          done
+          ls -la "$XCFL/"
+
       - name: Build macOS
         script: |
-          flutter build macos --release
+          cd macos
+          PODS_ROOT="$PWD/Pods" \
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -derivedDataPath "$PWD/../build/macos/DerivedData" \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            PODS_ROOT="$PWD/Pods"
+          echo "=== Finding .app ==="
+          find ../build/macos/DerivedData -name "*.app" -type d | head -5
+
+      - name: Package app
+        script: |
+          APP=$(find build/macos/DerivedData -name "*.app" -type d | head -1)
+          echo "Found: $APP"
+          mkdir -p build/macos/Build/Products/Release
+          cp -r "$APP" build/macos/Build/Products/Release/
+          cd build/macos/Build/Products/Release
+          zip -r urdown_macos.zip *.app
+          ls -lh urdown_macos.zip
 
     artifacts:
-      - build/macos/Build/Products/Release/*.app
+      - build/macos/Build/Products/Release/urdown_macos.zip
 
     publishing:
       email:
