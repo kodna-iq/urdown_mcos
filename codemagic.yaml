@@ -33,20 +33,13 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Pod install
-        script: |
-          set -e
-          cd macos
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
-          echo "✅ Pods installed"
-
       - name: Build macOS
         script: |
           set -e
-          # Force arm64 — Codemagic Mac mini M2 must NOT build x86_64
-          flutter build macos --release \
-            --dart-define=FLUTTER_TARGET_PLATFORM=darwin-arm64
+          # Regenerate plugin registrant to match current pubspec (removes stale plugins)
+          flutter pub get
+          # Build — flutter handles pod install internally with correct plugin list
+          flutter build macos --release
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
           echo "✅ Build complete and zipped"
