@@ -13,8 +13,7 @@
 		33CC10F62044A3C60003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F52044A3C60003C045 /* MainFlutterWindow.swift */; };
 		33CC10F82044A3C60003C045 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F72044A3C60003C045 /* Main.storyboard */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F52044A3C60003C045 /* MainFlutterWindow.swift */; };
-		33E51913231747F40026EE4D /* DebugProfile.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = 33E51912231747F40026EE4D /* DebugProfile.entitlements */; };
-		33E51914231747F40026EE4D /* Release.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = 33E51915231747F40026EE4D /* Release.entitlements */; };
+
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -172,8 +171,7 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F82044A3C60003C045 /* Main.storyboard in Resources */,
-				33E51913231747F40026EE4D /* DebugProfile.entitlements in Resources */,
-				33E51914231747F40026EE4D /* Release.entitlements in Resources */,
+	
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

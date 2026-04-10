@@ -41,29 +41,38 @@ workflows:
           rm -rf Pods Podfile.lock
           pod install --repo-update
           echo "✅ Pod install done"
-          ls "Pods/Target Support Files/Pods-Runner/" | grep xcfilelist
 
-      - name: Inject PODS_ROOT into Flutter xcconfig
+      - name: Fix PODS_ROOT and xcfilelists
         script: |
           PODS_ROOT_ABS="$PWD/macos/Pods"
           XCCONFIG="macos/Flutter/ephemeral/Flutter-Generated.xcconfig"
-          echo "" >> "$XCCONFIG"
-          echo "PODS_ROOT=$PODS_ROOT_ABS" >> "$XCCONFIG"
-          echo "PODS_CONFIGURATION_BUILD_DIR=$PODS_ROOT_ABS/Build/Products/Release" >> "$XCCONFIG"
-          echo "✅ Injected PODS_ROOT into Flutter-Generated.xcconfig:"
+
+          # Inject PODS_ROOT into Flutter-Generated.xcconfig so Xcode can resolve it
+          grep -q "^PODS_ROOT=" "$XCCONFIG" || \
+            echo "PODS_ROOT=$PODS_ROOT_ABS" >> "$XCCONFIG"
+          grep -q "^PODS_CONFIGURATION_BUILD_DIR=" "$XCCONFIG" || \
+            echo "PODS_CONFIGURATION_BUILD_DIR=$PODS_ROOT_ABS/Build/Products/Release" >> "$XCCONFIG"
+
+          echo "✅ Flutter-Generated.xcconfig PODS entries:"
           grep PODS "$XCCONFIG"
 
-          # Also create xcfilelist at the root path as fallback
-          sudo mkdir -p "/Target Support Files/Pods-Runner" 2>/dev/null || \
-            mkdir -p "$HOME/Target Support Files/Pods-Runner" 2>/dev/null || true
+          # Create all xcfilelist files in the correct absolute path Xcode expects
+          XCFILELIST_DIR="$PODS_ROOT_ABS/Target Support Files/Pods-Runner"
+          mkdir -p "$XCFILELIST_DIR"
           for f in \
+            "Pods-Runner-frameworks-Debug-input-files.xcfilelist" \
+            "Pods-Runner-frameworks-Debug-output-files.xcfilelist" \
             "Pods-Runner-frameworks-Release-input-files.xcfilelist" \
             "Pods-Runner-frameworks-Release-output-files.xcfilelist" \
+            "Pods-Runner-resources-Debug-input-files.xcfilelist" \
+            "Pods-Runner-resources-Debug-output-files.xcfilelist" \
             "Pods-Runner-resources-Release-input-files.xcfilelist" \
             "Pods-Runner-resources-Release-output-files.xcfilelist"; do
-            sudo touch "/Target Support Files/Pods-Runner/$f" 2>/dev/null || true
-            touch "$PODS_ROOT_ABS/Target Support Files/Pods-Runner/$f" 2>/dev/null || true
+            [ -f "$XCFILELIST_DIR/$f" ] || touch "$XCFILELIST_DIR/$f"
           done
+
+          echo "✅ xcfilelists created at: $XCFILELIST_DIR"
+          ls "$XCFILELIST_DIR/"
 
       - name: Build macOS
         script: |
