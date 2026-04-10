@@ -33,41 +33,45 @@ workflows:
           dart run build_runner build \
             --delete-conflicting-outputs
 
-      - name: Install latest CocoaPods and pod install
+      - name: Generate Flutter engine files
         script: |
-          sudo gem install cocoapods --no-document
-          pod --version
+          flutter build macos --config-only --release || true
+
+      - name: Pod install
+        script: |
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
-          echo "=== xcfilelist files ==="
+          echo "=== xcfilelist check ==="
           find Pods -name "*.xcfilelist" | head -20
 
-      - name: Create missing xcfilelist files if needed
+      - name: Build with xcodebuild
         script: |
-          XCFL_DIR="macos/Pods/Target Support Files/Pods-Runner"
-          mkdir -p "$XCFL_DIR"
-          for f in \
-            "Pods-Runner-frameworks-Debug-input-files.xcfilelist" \
-            "Pods-Runner-frameworks-Debug-output-files.xcfilelist" \
-            "Pods-Runner-frameworks-Release-input-files.xcfilelist" \
-            "Pods-Runner-frameworks-Release-output-files.xcfilelist" \
-            "Pods-Runner-resources-Debug-input-files.xcfilelist" \
-            "Pods-Runner-resources-Debug-output-files.xcfilelist" \
-            "Pods-Runner-resources-Release-input-files.xcfilelist" \
-            "Pods-Runner-resources-Release-output-files.xcfilelist"; do
-            TARGET="$XCFL_DIR/$f"
-            if [ ! -f "$TARGET" ]; then
-              touch "$TARGET"
-              echo "Created: $TARGET"
-            fi
-          done
-          echo "=== All xcfilelist files ==="
-          ls -la "$XCFL_DIR"/*.xcfilelist
+          cd macos
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -derivedDataPath ../build/macos/DerivedData \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          echo "=== Build output ==="
+          find ../build/macos/DerivedData -name "*.app" -type d | head -5
 
-      - name: Build macOS
+      - name: Copy app to standard location
         script: |
-          flutter build macos --release
+          mkdir -p build/macos/Build/Products/Release
+          APP=$(find build/macos/DerivedData -name "*.app" -type d | head -1)
+          if [ -n "$APP" ]; then
+            cp -r "$APP" build/macos/Build/Products/Release/
+            echo "✅ App copied: $APP"
+          else
+            echo "❌ No .app found"
+            find build/macos -type d | head -20
+          fi
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
