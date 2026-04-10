@@ -2,6 +2,9 @@ platform :osx, '10.15'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Suppress unused master specs repo warning
+install! 'cocoapods', :warn_for_unused_master_specs_repo => false
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -22,6 +25,18 @@ def flutter_root
 end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+# Fix: CocoaPods cannot parse DART_DEFINES (comma-separated base64 values trip the xcconfig parser)
+pre_install do |installer|
+  generated = File.expand_path(
+    File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__
+  )
+  if File.exist?(generated)
+    content = File.read(generated)
+    filtered = content.lines.reject { |l| l.strip.start_with?('DART_DEFINES') }.join
+    File.write(generated, filtered)
+  end
+end
 
 flutter_macos_podfile_setup
 
