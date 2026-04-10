@@ -14,7 +14,7 @@
                   <items>
                      <menuItem title="UrDown" id="1Xt-HY-uBw">
                         <modifierMask key="keyEquivalentModifierMask"/>
-                        <menu key="submenu" title="UrDown" systemMenu="apple" id="uQy-DD-JDJ">
+                        <menu key="submenu" title="UrDown" systemMenu="apple" id="Xmn-9A-3pL">
                            <items>
                               <menuItem title="Quit UrDown" keyEquivalent="q" id="4sb-4s-VLi">
                                  <connections>
@@ -115,14 +115,14 @@
       <!--Window Controller-->
       <scene sceneID="hIz-AP-VOD">
          <objects>
-            <windowController id="B8D-0N-5wS" userLabel="Window Controller" sceneMemberID="viewController">
+            <windowController id="wCc-3p-Koo" userLabel="Window Controller" sceneMemberID="viewController">
                <window key="window" title="UrDown" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="IQv-IB-iLA">
                   <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" fullSizeContentView="YES"/>
                   <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
                   <rect key="contentRect" x="335" y="390" width="1280" height="800"/>
                   <rect key="screenRect" x="0.0" y="0.0" width="2560" height="1577"/>
                   <connections>
-                     <outlet property="delegate" destination="B8D-0N-5wS" id="PrD-fu-P6x"/>
+                     <outlet property="delegate" destination="wCc-3p-Koo" id="PrD-fu-P6x"/>
                   </connections>
                </window>
                <connections>
@@ -131,7 +131,6 @@
             </windowController>
             <customObject id="-1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             <customObject id="-2" userLabel="Application" sceneMemberID="application"/>
-            <customObject id="B8D-0N-5wS" userLabel="Window Controller Scene" customClass="NSObject"/>
          </objects>
          <point key="canvasLocation" x="75" y="250"/>
       </scene>
