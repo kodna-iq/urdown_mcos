@@ -234,7 +234,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${BUILT_PRODUCTS_DIR}/FlutterMacOS.framework/flutter_macos_assemble\" \"${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}\" ";
+			shellScript = "\"$FLUTTER_ROOT/packages/flutter_tools/bin/macos_assemble.sh\" embed\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
