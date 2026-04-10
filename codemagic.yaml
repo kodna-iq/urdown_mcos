@@ -26,12 +26,10 @@ workflows:
           unzip -o /tmp/ffprobe.zip -d /tmp/ffprobe_extracted
           cp /tmp/ffprobe_extracted/ffprobe assets/binaries/macos/ffprobe
           chmod +x assets/binaries/macos/ffprobe
-          ls -lh assets/binaries/macos/
 
       - name: Generate Isar code
         script: |
-          dart run build_runner build \
-            --delete-conflicting-outputs
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Generate Flutter engine files
         script: |
@@ -42,36 +40,51 @@ workflows:
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
-          find Pods -name "*.xcfilelist" | head -20
 
       - name: Build with xcodebuild
         script: |
+          set -exo pipefail
+          DERIVED="$PWD/build/macos/DerivedData"
+          mkdir -p "$DERIVED"
           cd macos
+          echo "=== Working dir: $PWD ==="
+          echo "=== Workspace contents ==="
+          ls -la
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
-            -derivedDataPath ../build/macos/DerivedData \
+            -derivedDataPath "$DERIVED" \
             ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            build
-          echo "=== Finding .app ==="
-          find ../build -name "*.app" -type d
+            2>&1 | tee /tmp/xcodebuild.log
+          echo "=== Exit code: $? ==="
+          echo "=== Searching ALL .app locations ==="
+          find "$DERIVED" -name "*.app" -type d 2>/dev/null
+          find ~/Library/Developer/Xcode/DerivedData -name "Runner.app" -type d 2>/dev/null | head -5
 
-      - name: Package and move app
+      - name: Package app
         script: |
-          APP=$(find build -name "*.app" -type d | head -1)
-          echo "Found: $APP"
-          if [ -n "$APP" ]; then
-            mkdir -p build/macos/Build/Products/Release
-            cp -r "$APP" build/macos/Build/Products/Release/
-            cd build/macos/Build/Products/Release
-            zip -r urdown_macos.zip *.app
-            echo "✅ Done"
-            ls -lh
+          set -e
+          echo "=== Full search for .app ==="
+          ALL_APPS=$(find . ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d 2>/dev/null | grep -v ".build" | head -10)
+          echo "$ALL_APPS"
+          APP=$(echo "$ALL_APPS" | head -1)
+          if [ -z "$APP" ]; then
+            echo "❌ No .app found anywhere"
+            cat /tmp/xcodebuild.log | tail -50
+            exit 1
           fi
+          echo "✅ Using: $APP"
+          mkdir -p build/macos/Build/Products/Release
+          cp -r "$APP" build/macos/Build/Products/Release/
+          cd build/macos/Build/Products/Release
+          APP_NAME=$(ls -d *.app | head -1)
+          zip -r urdown_macos.zip "$APP_NAME"
+          echo "✅ Created: urdown_macos.zip"
+          ls -lh
 
     artifacts:
       - build/macos/Build/Products/Release/urdown_macos.zip
