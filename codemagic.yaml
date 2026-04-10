@@ -31,32 +31,47 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Fix xcfilelist and build
+      - name: Flutter config only
         script: |
-          # Step 1: Run flutter config only to generate Flutter files
           flutter build macos --config-only --release || true
 
-          # Step 2: Pod install
+      - name: Pod install
+        script: |
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
 
-          # Step 3: Create any missing xcfilelist files
-          XCFL="Pods/Target Support Files/Pods-Runner"
-          mkdir -p "$XCFL"
-          for cfg in Debug Release Profile; do
-            for t in input output; do
-              f="$XCFL/Pods-Runner-frameworks-${cfg}-${t}-files.xcfilelist"
-              [ -f "$f" ] || touch "$f"
-              r="$XCFL/Pods-Runner-resources-${cfg}-${t}-files.xcfilelist"
-              [ -f "$r" ] || touch "$r"
-            done
-          done
-          echo "✅ xcfilelist files ready:"
-          ls "$XCFL/"
-          cd ..
+      - name: Fix PODS_ROOT in project.pbxproj
+        script: |
+          PODS_ABS="$PWD/macos/Pods"
+          PBXPROJ="macos/Runner.xcodeproj/project.pbxproj"
+          echo "PODS_ABS = $PODS_ABS"
+          echo "=== xcfilelist refs before fix ==="
+          grep "xcfilelist" "$PBXPROJ" || echo "none found"
+          python3 - << PYEOF
+          import re, pathlib, os
+          pods_abs = os.environ.get('PODS_ABS', '$PWD/macos/Pods')
+          pbx = pathlib.Path('macos/Runner.xcodeproj/project.pbxproj')
+          text = pbx.read_text()
+          # Fix: replace "\$(PODS_ROOT)" with absolute path
+          fixed = text.replace('"$(PODS_ROOT)/Target Support Files/', f'"{pods_abs}/Target Support Files/')
+          fixed = fixed.replace('"${PODS_ROOT}/Target Support Files/', f'"{pods_abs}/Target Support Files/')
+          # Also fix relative paths
+          fixed = fixed.replace('"Target Support Files/Pods-Runner/', f'"{pods_abs}/Target Support Files/Pods-Runner/')
+          if fixed != text:
+              pbx.write_text(fixed)
+              print("Fixed PODS_ROOT references in project.pbxproj")
+          else:
+              print("No PODS_ROOT references found - checking what's there:")
+              for line in text.splitlines():
+                  if 'xcfilelist' in line or 'Target Support' in line:
+                      print(f"  {line.strip()}")
+          PYEOF
+          echo "=== xcfilelist refs after fix ==="
+          grep "xcfilelist" "$PBXPROJ" || echo "none found"
 
-          # Step 4: Build with flutter (uses existing pod install)
+      - name: Build macOS
+        script: |
           flutter build macos --release
 
     artifacts:
