@@ -44,9 +44,6 @@ dependencies:
   # ── Media / Image ────────────────────────────────────────────────────────
   cached_network_image: ^3.4.1
 
-  # ── Audio (download-complete sound) ──────────────────────────────────────
-  audioplayers: ^6.1.0
-
   # ── URL launcher ─────────────────────────────────────────────────────────
   url_launcher: ^6.3.0
 

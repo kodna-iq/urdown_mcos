@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -297,12 +296,15 @@ class DownloadManager {
         await _updateJob(completedJob);
         await _addToHistory(completedJob);
         await NotificationService.instance.showDownloadComplete(jobId);
-        // FIX BUG-C1: AudioPlayer was never disposed — memory leak.
-        // Create, play, then dispose when done.
+        // Play completion sound using macOS native afplay (no external pod needed)
         try {
-          final player = AudioPlayer();
-          await player.play(AssetSource('sounds/DHD.mp3'));
-          player.onPlayerComplete.first.then((_) => player.dispose());
+          if (Platform.isMacOS) {
+            final execPath = Platform.resolvedExecutable;
+            final appDir = p.dirname(p.dirname(execPath));
+            final soundPath = p.join(appDir, 'Frameworks', 'App.framework',
+                'Resources', 'flutter_assets', 'assets', 'sounds', 'DHD.mp3');
+            Process.run('afplay', [soundPath]);
+          }
         } catch (_) {}
         _scheduleNext();
 
