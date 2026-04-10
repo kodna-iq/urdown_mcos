@@ -31,9 +31,11 @@ workflows:
         script: |
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: Flutter config only
+      - name: Flutter generate ephemeral files
         script: |
-          flutter build macos --config-only --release || true
+          flutter build macos --config-only --release
+          echo "✅ Flutter-Generated.xcconfig:"
+          cat macos/Flutter/ephemeral/Flutter-Generated.xcconfig
 
       - name: Pod install
         script: |
@@ -42,9 +44,6 @@ workflows:
           rm -rf Pods Podfile.lock
           pod install --repo-update
           echo "✅ Pod install done"
-          echo "📂 Pods-Runner xcconfig files:"
-          ls "Pods/Target Support Files/Pods-Runner/"
-          echo "📄 Podfile.lock exists: $(ls Podfile.lock)"
 
       - name: Build macOS
         script: |
