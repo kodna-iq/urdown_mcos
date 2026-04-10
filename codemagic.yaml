@@ -36,17 +36,44 @@ workflows:
       - name: Build macOS
         script: |
           set -e
-          # Regenerate plugin registrant to match current pubspec (removes stale plugins)
-          flutter pub get
-          # Build — flutter handles pod install internally with correct plugin list
-          flutter build macos --release
-          cd build/macos/Build/Products/Release
-          zip -r --symlinks urdown.app.zip Runner.app
+
+          # 1. Generate Flutter ephemeral files (Flutter-Generated.xcconfig, plugin registrant, etc.)
+          flutter build macos --config-only --release
+
+          # 2. Show what was generated (for debug)
+          echo "=== GeneratedPluginRegistrant.swift ==="
+          cat macos/Flutter/GeneratedPluginRegistrant.swift
+          echo "=== Flutter-Generated.xcconfig ==="
+          cat macos/Flutter/ephemeral/Flutter-Generated.xcconfig || true
+
+          # 3. Install CocoaPods with full plugin list now available
+          cd macos
+          rm -rf Pods Podfile.lock
+          pod install --repo-update
+          echo "✅ pod install done"
+          cd ..
+
+          # 4. Build with xcodebuild (skip flutter's internal pod install)
+          xcodebuild \
+            -workspace macos/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -derivedDataPath build/macos \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tail -50
+
+          # 5. Package
+          APP_PATH=$(find build/macos/Build/Products/Release -name "*.app" -maxdepth 1 | head -1)
+          echo "App found: $APP_PATH"
+          cd "$(dirname "$APP_PATH")"
+          zip -r --symlinks urdown.app.zip "$(basename "$APP_PATH")"
           echo "✅ Build complete and zipped"
 
     artifacts:
-      - build/macos/Build/Products/Release/Runner.app
-      - build/macos/Build/Products/Release/urdown.app.zip
+      - build/macos/Build/Products/Release/*.app
+      - build/macos/Build/Products/Release/*.zip
 
     publishing:
       email:
