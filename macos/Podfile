@@ -39,23 +39,6 @@ post_install do |installer|
       if config.build_settings['MACOSX_DEPLOYMENT_TARGET'].to_f < 10.15
         config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
       end
-      # Force arm64 only — exclude x86_64 to fix module-not-found on Codemagic M2
-      config.build_settings['EXCLUDED_ARCHS[sdk=macosx*]'] = 'x86_64'
-      config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
-    end
-  end
-
-  # Fix xcfilelist paths - create them if missing
-  pods_root = File.dirname(File.realpath(__FILE__)) + '/Pods'
-  xcfilelist_dir = "#{pods_root}/Target Support Files/Pods-Runner"
-  FileUtils.mkdir_p(xcfilelist_dir)
-  ['Debug', 'Release'].each do |config|
-    ['input', 'output'].each do |type|
-      file = "#{xcfilelist_dir}/Pods-Runner-frameworks-#{config}-#{type}-files.xcfilelist"
-      unless File.exist?(file)
-        File.write(file, '')
-        puts "Created: #{file}"
-      end
     end
   end
 end

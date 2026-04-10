@@ -37,30 +37,25 @@ workflows:
         script: |
           set -e
 
-          # Step 1: Generate ephemeral Flutter files (Flutter-Generated.xcconfig, plugin registrant)
-          flutter build macos --config-only --release
-          echo "=== Plugin registrant after config-only ==="
-          cat macos/Flutter/GeneratedPluginRegistrant.swift
+          # Show what plugins are registered (must NOT include audioplayers)
+          echo "=== pubspec plugins check ==="
+          grep -E "audioplayers|file_picker|window_manager" pubspec.yaml || true
 
-          # Step 2: Pre-install pods so flutter build won't re-run pod install
-          cd macos
-          rm -rf Pods Podfile.lock
-          pod install --repo-update
-          echo "✅ Pods installed"
-          ls Pods/
-          cd ..
-
-          # Step 3: Full flutter build — pods already exist so flutter skips pod install
+          # Single clean build — flutter handles pod install + compilation correctly
           flutter build macos --release
 
-          # Step 4: Verify output size
+          # Verify real app size (must be >> 1 MB)
+          echo "=== App size check ==="
           du -sh build/macos/Build/Products/Release/Runner.app
-          ls -la build/macos/Build/Products/Release/Runner.app/Contents/MacOS/
 
-          # Step 5: Package
+          # Verify Flutter engine is embedded
+          ls build/macos/Build/Products/Release/Runner.app/Contents/Frameworks/ | head -5
+
+          # Package for download
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
-          echo "✅ Build complete and zipped"
+          du -sh urdown.app.zip
+          echo "✅ Build complete"
 
     artifacts:
       - build/macos/Build/Products/Release/*.app
