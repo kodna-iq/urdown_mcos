@@ -22,16 +22,18 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── 1. Window Manager ─────────────────────────────────────────────────
-  // CRITICAL: ensureInitialized() must be called first.
-  // waitUntilReadyToShow must NOT be awaited — doing so creates a deadlock:
-  //   - waitUntilReadyToShow waits for Flutter engine "ready" signal
-  //   - "ready" signal fires only after runApp() attaches the widget tree
-  //   - but runApp() is blocked by the await → deadlock → blank window
-  // Solution: fire-and-forget, let callback run after runApp().
+  // PROBLEM: ensureInitialized() hides the window via orderOut(nil).
+  // waitUntilReadyToShow() waits for Flutter "AppLifecycleState.resumed"
+  // to show it again. On VirtualBox this event NEVER fires → window stays
+  // hidden forever.
+  //
+  // FIX: Fire-and-forget the callback (it works on real Mac),
+  // then after runApp() add a 300ms fallback that shows the window
+  // if the callback hasn't fired yet.
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
-    const options = WindowOptions(
+    const WindowOptions options = WindowOptions(
       size:            Size(1280, 800),
       minimumSize:     Size(760, 520),
       center:          true,
@@ -41,18 +43,14 @@ Future<void> main() async {
       title:           'UrDown',
     );
 
-    // Fire-and-forget — NEVER await this before runApp()
+    // Primary path: works on real Mac
     windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
       await windowManager.focus();
     });
   }
 
-  // ── 2. Start runApp immediately — background tasks come AFTER ──────────
-  // On macOS the window only appears after runApp() signals engine-ready.
-  // Move all heavy init to background AFTER runApp(), or do it quickly here.
-
-  // Database — fast, keep here
+  // ── 2. Init ────────────────────────────────────────────────────────────
   final dir = await getApplicationSupportDirectory();
   _isar = await Isar.open(
     [DownloadJobSchema, HistoryEntrySchema],
@@ -60,19 +58,29 @@ Future<void> main() async {
     inspector: false,
   );
 
-  // Settings — fast, keep here
   final settings = await AppSettings.load();
-
-  // Clipboard monitor — synchronous start
   if (settings.clipboardMonitorEnabled) {
     ClipboardMonitor.instance.start();
   }
 
-  // GitHub config — non-blocking, must NOT block runApp
+  // Non-blocking — must NOT delay runApp()
   GithubConfigService.instance.initBackground().ignore();
 
   // ── 3. Launch ──────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
+
+  // ── 4. Fallback window show (fixes VirtualBox + any env where
+  //       lifecycle events are unreliable) ────────────────────────────────
+  // runApp() returns immediately after scheduling widget build.
+  // We wait 300 ms for the first frame, then force-show if still hidden.
+  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+    await Future.delayed(const Duration(milliseconds: 300));
+    final visible = await windowManager.isVisible();
+    if (!visible) {
+      await windowManager.show();
+      await windowManager.focus();
+    }
+  }
 }
 
 class UrDownApp extends ConsumerWidget {

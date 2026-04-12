@@ -8,8 +8,11 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    // Ensure window is visible and on top — required for VirtualBox and
-    // cases where window_manager hasn't fired show() yet.
+    // Show the window immediately from the native side.
+    // window_manager.ensureInitialized() will hide it afterwards,
+    // and either the lifecycle callback or the AppDelegate timer will
+    // show it again. Having this here ensures the window exists and is
+    // properly set up before window_manager touches it.
     self.makeKeyAndOrderFront(nil)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
