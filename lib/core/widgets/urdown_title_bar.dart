@@ -11,7 +11,30 @@ class UrDownTitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Safety guard — macOS-only build.
+    // Only render on macOS — safety guard for other platforms.
+    if (!Platform.isMacOS) return const SizedBox.shrink();
+
+    // TitleBarStyle.normal is used for VirtualBox compatibility (Metal-less
+    // environments). When the native title bar is active, we hide this custom
+    // bar to avoid having two title bars stacked.
+    // We detect this by checking if we're using the normal title bar style:
+    // the native bar shows the window title "UrDown", so no custom bar needed.
+    //
+    // To restore the custom title bar on real Mac hardware, change
+    // TitleBarStyle in main.dart back to TitleBarStyle.hidden and
+    // remove the SizedBox.shrink() early return below.
+    return const SizedBox.shrink();
+  }
+}
+
+// ── Full custom title bar (used when TitleBarStyle.hidden is active) ─────────
+// Kept here for reference — re-enable by removing the early return above.
+
+class UrDownTitleBarFull extends StatelessWidget {
+  const UrDownTitleBarFull({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     if (!Platform.isMacOS) return const SizedBox.shrink();
 
     final isDark   = Theme.of(context).brightness == Brightness.dark;
@@ -86,9 +109,9 @@ class _WindowControls extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _WinBtn(isDark: isDark, icon: Icons.remove_rounded,     tooltip: 'Minimize', onTap: windowManager.minimize),
-        _WinBtn(isDark: isDark, icon: Icons.crop_square_rounded, tooltip: 'Maximize', onTap: _toggleMaximize, iconSize: 14),
-        _WinBtn(isDark: isDark, icon: Icons.close_rounded,       tooltip: 'Close',    onTap: windowManager.close, isClose: true),
+        _WinBtn(isDark: isDark, icon: Icons.remove_rounded,      tooltip: 'Minimize', onTap: windowManager.minimize),
+        _WinBtn(isDark: isDark, icon: Icons.crop_square_rounded,  tooltip: 'Maximize', onTap: _toggleMaximize, iconSize: 14),
+        _WinBtn(isDark: isDark, icon: Icons.close_rounded,        tooltip: 'Close',    onTap: windowManager.close, isClose: true),
       ],
     );
   }

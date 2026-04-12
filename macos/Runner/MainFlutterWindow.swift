@@ -8,21 +8,16 @@ class MainFlutterWindow: NSWindow {
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
 
-    // ── VirtualBox / SoftwareGL hardening ────────────────────────────────
-    // 1. Force the window to be fully opaque so the OS uses the software
-    //    renderer path (no Metal layer compositing needed).
+    // Keep the window fully opaque — required for SoftwareGL / VirtualBox.
+    // Non-opaque windows need Metal compositing to show content; opaque
+    // windows use a simple blit that works even without a GPU.
     self.isOpaque = true
-    self.backgroundColor = NSColor(
-      red: 7.0/255, green: 9.0/255, blue: 13.0/255, alpha: 1.0
-    ) // #07090D — matches Flutter darkBg
+    self.backgroundColor = .windowBackgroundColor
 
-    // 2. Disable state restoration so no phantom window appears on boot.
+    // Prevent state restoration — avoids phantom windows on VirtualBox boot.
     self.isRestorable = false
 
-    // 3. Show immediately BEFORE window_manager can call orderOut:.
-    //    window_manager.ensureInitialized() will hide it again, but our
-    //    Dart side calls show()+focus() right after ensureInitialized()
-    //    so it comes back immediately.
+    // Show immediately so the window is always visible from launch.
     self.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
 

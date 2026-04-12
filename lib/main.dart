@@ -21,38 +21,40 @@ final isarProvider = Provider<Isar>((ref) => _isar);
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── 1. Window Manager ─────────────────────────────────────────────────
-  // Root cause on VirtualBox:
-  //   windowManager.ensureInitialized() calls [NSWindow orderOut:] which
-  //   HIDES the window. It then waits for AppLifecycleState.resumed before
-  //   showing it again. On VirtualBox this lifecycle event NEVER fires
-  //   because the Metal GPU compositor is absent, so the window stays
-  //   hidden forever.
-  //
-  // Fix:
-  //   - Skip waitUntilReadyToShow() entirely.
-  //   - Configure the window options manually via setSize / setAlignment.
-  //   - Call show() + focus() immediately after ensureInitialized().
-  //   - The Swift side (MainFlutterWindow) also calls makeKeyAndOrderFront
-  //     early so the window is never in a hidden state.
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
-    // Apply window options without going through waitUntilReadyToShow.
-    await windowManager.setSize(const Size(1280, 800));
-    await windowManager.setMinimumSize(const Size(760, 520));
-    await windowManager.setAlignment(Alignment.center);
-    await windowManager.setSkipTaskbar(false);
-    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
-    await windowManager.setTitle('UrDown');
-    await windowManager.setBackgroundColor(const Color(0xFF07090D));
+    // TitleBarStyle.normal is used intentionally.
+    //
+    // TitleBarStyle.hidden requires Metal GPU compositing to show content.
+    // On VirtualBox (SoftwareGL / no Metal) the window renders blank forever.
+    // Using the native title bar bypasses Metal layer compositing entirely,
+    // so the window always shows regardless of GPU capabilities.
+    //
+    // The custom UrDownTitleBar widget is hidden automatically (see
+    // urdown_title_bar.dart) when the native title bar is active.
+    const WindowOptions options = WindowOptions(
+      size:         Size(1280, 800),
+      minimumSize:  Size(760, 520),
+      center:       true,
+      skipTaskbar:  false,
+      titleBarStyle: TitleBarStyle.normal,
+      title:        'UrDown',
+    );
 
-    // Show immediately — do NOT wait for lifecycle events.
+    // waitUntilReadyToShow relies on AppLifecycleState.resumed which never
+    // fires on VirtualBox. We apply options then show immediately instead.
+    windowManager.waitUntilReadyToShow(options, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+
+    // Immediate fallback — shows the window without waiting for lifecycle.
     await windowManager.show();
     await windowManager.focus();
   }
 
-  // ── 2. Init ────────────────────────────────────────────────────────────
+  // ── Init ───────────────────────────────────────────────────────────────
   final dir = await getApplicationSupportDirectory();
   _isar = await Isar.open(
     [DownloadJobSchema, HistoryEntrySchema],
@@ -65,18 +67,19 @@ Future<void> main() async {
     ClipboardMonitor.instance.start();
   }
 
-  // Non-blocking — must NOT delay runApp()
   GithubConfigService.instance.initBackground().ignore();
 
-  // ── 3. Launch ──────────────────────────────────────────────────────────
+  // ── Launch ─────────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
 
-  // ── 4. Safety net — re-show after first frame in case anything hid it ─
+  // ── Safety net ─────────────────────────────────────────────────────────
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!await windowManager.isVisible()) {
-      await windowManager.show();
-      await windowManager.focus();
+    for (final ms in [300, 800, 1500]) {
+      await Future.delayed(Duration(milliseconds: ms));
+      if (!await windowManager.isVisible()) {
+        await windowManager.show();
+        await windowManager.focus();
+      }
     }
   }
 }
