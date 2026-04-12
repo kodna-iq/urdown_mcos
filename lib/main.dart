@@ -22,6 +22,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── 1. Window Manager ─────────────────────────────────────────────────
+  // CRITICAL: ensureInitialized() must be called first.
+  // waitUntilReadyToShow must NOT be awaited — doing so creates a deadlock:
+  //   - waitUntilReadyToShow waits for Flutter engine "ready" signal
+  //   - "ready" signal fires only after runApp() attaches the widget tree
+  //   - but runApp() is blocked by the await → deadlock → blank window
+  // Solution: fire-and-forget, let callback run after runApp().
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
@@ -35,15 +41,18 @@ Future<void> main() async {
       title:           'UrDown',
     );
 
-    // waitUntilReadyToShow MUST be awaited on macOS so the window
-    // is guaranteed to appear after runApp renders the first frame.
-    await windowManager.waitUntilReadyToShow(options, () async {
+    // Fire-and-forget — NEVER await this before runApp()
+    windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
       await windowManager.focus();
     });
   }
 
-  // ── 2. Database ────────────────────────────────────────────────────────
+  // ── 2. Start runApp immediately — background tasks come AFTER ──────────
+  // On macOS the window only appears after runApp() signals engine-ready.
+  // Move all heavy init to background AFTER runApp(), or do it quickly here.
+
+  // Database — fast, keep here
   final dir = await getApplicationSupportDirectory();
   _isar = await Isar.open(
     [DownloadJobSchema, HistoryEntrySchema],
@@ -51,18 +60,18 @@ Future<void> main() async {
     inspector: false,
   );
 
-  // ── 3. Settings ────────────────────────────────────────────────────────
+  // Settings — fast, keep here
   final settings = await AppSettings.load();
 
-  // ── 4. Clipboard monitor ───────────────────────────────────────────────
+  // Clipboard monitor — synchronous start
   if (settings.clipboardMonitorEnabled) {
     ClipboardMonitor.instance.start();
   }
 
-  // ── 5. GitHub remote config — non-blocking ─────────────────────────────
-  await GithubConfigService.instance.initBackground();
+  // GitHub config — non-blocking, must NOT block runApp
+  GithubConfigService.instance.initBackground().ignore();
 
-  // ── 6. Launch ──────────────────────────────────────────────────────────
+  // ── 3. Launch ──────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
 }
 
