@@ -37,30 +37,81 @@ workflows:
         script: |
           set -e
 
-          # Step 1: Generate Flutter ephemeral files (needed by Podfile to find flutter_root)
+          # 1. Generate Flutter ephemeral files (Podfile needs Flutter-Generated.xcconfig)
           flutter build macos --config-only --release
 
-          # Step 2: Install pods — creates xcfilelist files via post_install hook
+          # 2. Pre-install pods manually
           cd macos
           rm -rf Pods Podfile.lock
           pod install --repo-update
+          PODS_ABS="$PWD/Pods"
           cd ..
 
-          # Step 3: Build Universal Binary (arm64 + x86_64) — works on Apple Silicon AND Intel/VirtualBox
-          export FLUTTER_XCODE_ARCHS="arm64 x86_64"
+          # 3. Patch [CP] Embed Pods Frameworks in pbxproj
+          #    After pod install, the pbxproj gets a new build phase with $(PODS_ROOT)/...
+          #    Flutter's internal pod install re-adds it with a broken PODS_ROOT="/".
+          #    Fix: replace all $(PODS_ROOT) references with the absolute path.
+          python3 << PYEOF
+          import re, pathlib, os, sys
+          pbx = pathlib.Path('macos/Runner.xcodeproj/project.pbxproj')
+          pods_abs = os.path.abspath('macos/Pods')
+          text = pbx.read_text()
+          original = text
+
+          # Replace ALL forms of PODS_ROOT reference with absolute path
+          text = text.replace('"$(PODS_ROOT)/Target Support Files/', f'"{pods_abs}/Target Support Files/')
+          text = text.replace('"${PODS_ROOT}/Target Support Files/', f'"{pods_abs}/Target Support Files/')
+          text = re.sub(r'"?\$[({]PODS_ROOT[)}]/Target Support Files/', f'"{pods_abs}/Target Support Files/', text)
+
+          # Also patch PODS_ROOT setting itself to absolute path
+          text = re.sub(
+              r'(PODS_ROOT = )"?\$\(inherited\)";',
+              f'\\1"{pods_abs}";',
+              text
+          )
+          text = re.sub(
+              r'(PODS_PODFILE_DIR_PATH = )"?\$\(inherited\)";',
+              f'\\1"{os.path.abspath("macos")}";',
+              text
+          )
+
+          if text != original:
+              pbx.write_text(text)
+              print(f"✅ Patched project.pbxproj — PODS_ROOT → {pods_abs}")
+          else:
+              print("ℹ️  No PODS_ROOT references found in pbxproj (pod install may not have added them yet)")
+
+          # Verify xcfilelist files exist
+          xcfl = pathlib.Path(f'{pods_abs}/Target Support Files/Pods-Runner')
+          xcfl.mkdir(parents=True, exist_ok=True)
+          for cfg in ['Debug', 'Release', 'Profile']:
+              for t in ['input', 'output']:
+                  f = xcfl / f'Pods-Runner-frameworks-{cfg}-{t}-files.xcfilelist'
+                  if not f.exists():
+                      f.write_text('')
+                      print(f"Created: {f}")
+          print("✅ xcfilelist files verified")
+          PYEOF
+
+          # 4. Build — flutter will re-run pod install internally (740ms fast path)
+          #    but our pbxproj patch stays because flutter doesn't rewrite pbxproj
           flutter build macos --release
 
-          # Step 4: Verify and package
+          # 5. Package
           APP=build/macos/Build/Products/Release/Runner.app
-          echo "App size: $(du -sh $APP)"
-          echo "Frameworks: $(ls $APP/Contents/Frameworks/ | head -5)"
+          if [ ! -d "$APP" ]; then
+            echo "❌ Runner.app not found, searching..."
+            find build/macos -name "*.app" -type d | head -5
+            exit 1
+          fi
+          echo "✅ App size: $(du -sh $APP)"
           cd build/macos/Build/Products/Release
           zip -r --symlinks urdown.app.zip Runner.app
-          echo "✅ ZIP size: $(du -sh urdown.app.zip)"
+          echo "✅ ZIP: $(du -sh urdown.app.zip)"
 
     artifacts:
+      - build/macos/Build/Products/Release/urdown.app.zip
       - build/macos/Build/Products/Release/*.app
-      - build/macos/Build/Products/Release/*.zip
 
     publishing:
       email:

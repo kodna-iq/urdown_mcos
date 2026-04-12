@@ -1,39 +1,46 @@
 platform :osx, '10.15'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
-
-# Suppress unused master specs repo warning
 install! 'cocoapods', :warn_for_unused_master_specs_repo => false
 
 project 'Runner', {
-  'Debug' => :debug,
+  'Debug'   => :debug,
   'Profile' => :release,
   'Release' => :release,
 }
 
 def flutter_root
-  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__)
-  unless File.exist?(generated_xcode_build_settings_path)
-    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure \"flutter pub get\" is executed first"
+  generated = File.expand_path(
+    File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'),
+    __FILE__
+  )
+  unless File.exist?(generated)
+    raise "#{generated} must exist. Run 'flutter pub get' first."
   end
-
-  File.foreach(generated_xcode_build_settings_path) do |line|
-    matches = line.match(/FLUTTER_ROOT\=(.*)/)
-    return matches[1].strip if matches
+  File.foreach(generated) do |line|
+    m = line.match(/FLUTTER_ROOT\=(.*)/)
+    return m[1].strip if m
   end
-  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Flutter-Generated.xcconfig, then run \"flutter pub get\""
+  raise 'FLUTTER_ROOT not found in Flutter-Generated.xcconfig'
 end
 
-require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+require File.expand_path(
+  File.join('packages', 'flutter_tools', 'bin', 'podhelper'),
+  flutter_root
+)
 
-# Fix: CocoaPods cannot parse DART_DEFINES (comma-separated base64 values trip the xcconfig parser)
-pre_install do |installer|
+# Fix: DART_DEFINES contains base64-encoded comma-separated values that break
+# xcconfig parsing. Strip it before CocoaPods reads Generated.xcconfig.
+pre_install do |_installer|
   generated = File.expand_path(
-    File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'), __FILE__
+    File.join('..', 'Flutter', 'ephemeral', 'Flutter-Generated.xcconfig'),
+    __FILE__
   )
   if File.exist?(generated)
     content = File.read(generated)
-    filtered = content.lines.reject { |l| l.strip.start_with?('DART_DEFINES') }.join
+    filtered = content.lines
+                      .reject { |l| l.strip.start_with?('DART_DEFINES') }
+                      .join
     File.write(generated, filtered)
   end
 end
@@ -43,28 +50,27 @@ flutter_macos_podfile_setup
 target 'Runner' do
   use_frameworks!
   use_modular_headers!
-
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
+  # RunnerTests target intentionally omitted — it does not exist in pbxproj
 end
 
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
     target.build_configurations.each do |config|
-      if config.build_settings['MACOSX_DEPLOYMENT_TARGET'].to_f < 10.15
-        config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15'
-      end
+      sdk = config.build_settings['MACOSX_DEPLOYMENT_TARGET'].to_f
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '10.15' if sdk < 10.15
     end
   end
 
-  # Create missing xcfilelist files required by [CP] Embed Pods Frameworks build phase
-  pods_root = installer.sandbox.root.to_s
-  xcfilelist_dir = File.join(pods_root, 'Target Support Files', 'Pods-Runner')
-  FileUtils.mkdir_p(xcfilelist_dir)
-  ['Debug', 'Release', 'Profile'].each do |config|
-    ['input', 'output'].each do |type|
-      file = File.join(xcfilelist_dir, "Pods-Runner-frameworks-#{config}-#{type}-files.xcfilelist")
-      File.write(file, '') unless File.exist?(file)
+  # Guarantee xcfilelist files exist so [CP] Embed Pods Frameworks never fails
+  pods_root   = installer.sandbox.root.to_s
+  xcfl_dir    = File.join(pods_root, 'Target Support Files', 'Pods-Runner')
+  FileUtils.mkdir_p(xcfl_dir)
+  %w[Debug Release Profile].each do |cfg|
+    %w[input output].each do |t|
+      f = File.join(xcfl_dir, "Pods-Runner-frameworks-#{cfg}-#{t}-files.xcfilelist")
+      File.write(f, '') unless File.exist?(f)
     end
   end
 end

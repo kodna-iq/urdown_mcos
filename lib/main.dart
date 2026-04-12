@@ -15,22 +15,14 @@ import 'services/clipboard_monitor.dart';
 import 'services/github/github_config_service.dart';
 import 'features/settings/app_settings.dart';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Isar provider
-// ──────────────────────────────────────────────────────────────────────────────
-
 late final Isar _isar;
 final isarProvider = Provider<Isar>((ref) => _isar);
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Entry point
-// ──────────────────────────────────────────────────────────────────────────────
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── 1. Window Manager (macOS only) ────────────────────────────────────
-  if (Platform.isMacOS) {
+  // ── 1. Window Manager ─────────────────────────────────────────────────
+  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
     const options = WindowOptions(
@@ -43,11 +35,9 @@ Future<void> main() async {
       title:           'UrDown',
     );
 
-    // Do NOT await — let the callback fire after runApp() has attached
-    // the widget tree. Awaiting this on macOS blocks runApp() and produces
-    // a blank window because Flutter has nothing to render into when the
-    // native window becomes visible.
-    windowManager.waitUntilReadyToShow(options, () async {
+    // waitUntilReadyToShow MUST be awaited on macOS so the window
+    // is guaranteed to appear after runApp renders the first frame.
+    await windowManager.waitUntilReadyToShow(options, () async {
       await windowManager.show();
       await windowManager.focus();
     });
@@ -75,10 +65,6 @@ Future<void> main() async {
   // ── 6. Launch ──────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Root widget
-// ──────────────────────────────────────────────────────────────────────────────
 
 class UrDownApp extends ConsumerWidget {
   const UrDownApp({super.key});
