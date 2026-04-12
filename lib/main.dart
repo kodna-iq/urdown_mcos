@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'app/router.dart';
 import 'app/theme.dart';
@@ -21,40 +20,17 @@ final isarProvider = Provider<Isar>((ref) => _isar);
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    await windowManager.ensureInitialized();
+  // ── Window Management ──────────────────────────────────────────────────
+  // window_manager.ensureInitialized() calls [NSWindow orderOut:] which hides
+  // the window, then waits for AppLifecycleState.resumed before showing it.
+  // On VirtualBox this lifecycle event NEVER fires → window stays hidden.
+  //
+  // Fix: Skip ALL window_manager Dart calls entirely.
+  // The native Swift side (MainFlutterWindow.swift + AppDelegate.swift)
+  // handles window sizing, positioning, and showing directly via NSWindow APIs.
+  // This bypasses the entire broken lifecycle dance.
 
-    // TitleBarStyle.normal is used intentionally.
-    //
-    // TitleBarStyle.hidden requires Metal GPU compositing to show content.
-    // On VirtualBox (SoftwareGL / no Metal) the window renders blank forever.
-    // Using the native title bar bypasses Metal layer compositing entirely,
-    // so the window always shows regardless of GPU capabilities.
-    //
-    // The custom UrDownTitleBar widget is hidden automatically (see
-    // urdown_title_bar.dart) when the native title bar is active.
-    const WindowOptions options = WindowOptions(
-      size:         Size(1280, 800),
-      minimumSize:  Size(760, 520),
-      center:       true,
-      skipTaskbar:  false,
-      titleBarStyle: TitleBarStyle.normal,
-      title:        'UrDown',
-    );
-
-    // waitUntilReadyToShow relies on AppLifecycleState.resumed which never
-    // fires on VirtualBox. We apply options then show immediately instead.
-    windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
-
-    // Immediate fallback — shows the window without waiting for lifecycle.
-    await windowManager.show();
-    await windowManager.focus();
-  }
-
-  // ── Init ───────────────────────────────────────────────────────────────
+  // ── Database ───────────────────────────────────────────────────────────
   final dir = await getApplicationSupportDirectory();
   _isar = await Isar.open(
     [DownloadJobSchema, HistoryEntrySchema],
@@ -71,17 +47,6 @@ Future<void> main() async {
 
   // ── Launch ─────────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
-
-  // ── Safety net ─────────────────────────────────────────────────────────
-  if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    for (final ms in [300, 800, 1500]) {
-      await Future.delayed(Duration(milliseconds: ms));
-      if (!await windowManager.isVisible()) {
-        await windowManager.show();
-        await windowManager.focus();
-      }
-    }
-  }
 }
 
 class UrDownApp extends ConsumerWidget {

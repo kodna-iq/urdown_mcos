@@ -7,9 +7,11 @@ class AppDelegate: FlutterAppDelegate {
   override func applicationDidFinishLaunching(_ notification: Notification) {
     NSApp.activate(ignoringOtherApps: true)
 
-    // Force-flush the window content at multiple points.
-    // On VirtualBox the display server may not repaint automatically.
-    for delay in [0.1, 0.3, 0.6, 1.0, 2.0] {
+    // Force redraw at multiple intervals.
+    // VirtualBox SoftwareGL doesn't auto-flush CALayer backing stores,
+    // so we manually trigger display passes to make Flutter's frames appear.
+    let checkpoints: [Double] = [0.1, 0.3, 0.6, 1.0, 2.0, 4.0]
+    for delay in checkpoints {
       DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
         for window in NSApp.windows {
           if !window.isVisible {
