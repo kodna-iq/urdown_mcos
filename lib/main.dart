@@ -33,14 +33,23 @@ Future<void> main() async {
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
+    // NOTE: backgroundColor is intentionally omitted here.
+    // Setting a dark backgroundColor with TitleBarStyle.hidden causes a blank
+    // (all-black) window on VirtualBox because the SoftwareGL renderer cannot
+    // composite Flutter layers over a non-opaque NSWindow background before the
+    // first frame is drawn.  We let the OS use its default opaque white
+    // background; Flutter's scaffold paints over it on the first frame anyway.
+    //
+    // TitleBarStyle.hidden is kept — the custom UrDownTitleBar widget replaces
+    // the native chrome.  On VirtualBox this still works because the window
+    // content area (not the chrome) is what was blank.
     const WindowOptions options = WindowOptions(
-      size:            Size(1280, 800),
-      minimumSize:     Size(760, 520),
-      center:          true,
-      backgroundColor: Color(0xFF07090D),
-      skipTaskbar:     false,
-      titleBarStyle:   TitleBarStyle.hidden,
-      title:           'UrDown',
+      size:        Size(1280, 800),
+      minimumSize: Size(760, 520),
+      center:      true,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+      title:       'UrDown',
     );
 
     // Primary path: works on real Mac

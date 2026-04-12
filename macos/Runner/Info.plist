@@ -33,5 +33,11 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- Ensure the app renders at native resolution (helps SoftwareGL on VirtualBox) -->
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<!-- Allow fallback to software renderer when Metal GPU is unavailable (VirtualBox) -->
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 </dict>
 </plist>
