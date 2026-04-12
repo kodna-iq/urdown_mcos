@@ -5,32 +5,27 @@ import FlutterMacOS
 class AppDelegate: FlutterAppDelegate {
 
   override func applicationDidFinishLaunching(_ notification: Notification) {
-    // Activate the app so it gets focus — required on VirtualBox.
+    // Bring app to front immediately — critical on VirtualBox.
     NSApp.activate(ignoringOtherApps: true)
 
-    // ── VirtualBox rendering fix ──────────────────────────────────────────
-    // On VirtualBox the Metal compositor is absent; CALayer backing stores
-    // are never flushed to the screen automatically.  Calling
-    // setNeedsDisplay + display on every window's contentView after a short
-    // delay forces a synchronous software-render pass that makes Flutter's
-    // first frame actually appear.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-      for window in NSApp.windows {
-        window.contentView?.setNeedsDisplay(window.contentView?.bounds ?? .zero)
-        window.contentView?.display()
-        if !window.isVisible {
-          window.makeKeyAndOrderFront(nil)
+    // ── VirtualBox display flush ──────────────────────────────────────────
+    // On VirtualBox (no Metal), CALayer backing stores are not auto-flushed.
+    // We force a synchronous redraw of every window's content view at 3
+    // checkpoints to guarantee the first Flutter frame is actually painted.
+    for delay in [0.3, 0.8, 1.5] {
+      DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        for window in NSApp.windows {
+          // Force-show any hidden window
+          if !window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+          }
+          // Flush the CALayer tree synchronously
+          window.contentView?.setNeedsDisplay(window.contentView?.bounds ?? .zero)
+          window.contentView?.displayIfNeeded()
+          window.displayIfNeeded()
         }
+        NSApp.activate(ignoringOtherApps: true)
       }
-      NSApp.activate(ignoringOtherApps: true)
-    }
-
-    // Second-chance fallback at 1.5 s — catches slow boot / cold-start.
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-      for window in NSApp.windows where !window.isVisible {
-        window.makeKeyAndOrderFront(nil)
-      }
-      NSApp.activate(ignoringOtherApps: true)
     }
   }
 

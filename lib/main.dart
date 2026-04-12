@@ -22,41 +22,34 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── 1. Window Manager ─────────────────────────────────────────────────
-  // PROBLEM: ensureInitialized() hides the window via orderOut(nil).
-  // waitUntilReadyToShow() waits for Flutter "AppLifecycleState.resumed"
-  // to show it again. On VirtualBox this event NEVER fires → window stays
-  // hidden forever.
+  // Root cause on VirtualBox:
+  //   windowManager.ensureInitialized() calls [NSWindow orderOut:] which
+  //   HIDES the window. It then waits for AppLifecycleState.resumed before
+  //   showing it again. On VirtualBox this lifecycle event NEVER fires
+  //   because the Metal GPU compositor is absent, so the window stays
+  //   hidden forever.
   //
-  // FIX: Fire-and-forget the callback (it works on real Mac),
-  // then after runApp() add a 300ms fallback that shows the window
-  // if the callback hasn't fired yet.
+  // Fix:
+  //   - Skip waitUntilReadyToShow() entirely.
+  //   - Configure the window options manually via setSize / setAlignment.
+  //   - Call show() + focus() immediately after ensureInitialized().
+  //   - The Swift side (MainFlutterWindow) also calls makeKeyAndOrderFront
+  //     early so the window is never in a hidden state.
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
     await windowManager.ensureInitialized();
 
-    // NOTE: backgroundColor is intentionally omitted here.
-    // Setting a dark backgroundColor with TitleBarStyle.hidden causes a blank
-    // (all-black) window on VirtualBox because the SoftwareGL renderer cannot
-    // composite Flutter layers over a non-opaque NSWindow background before the
-    // first frame is drawn.  We let the OS use its default opaque white
-    // background; Flutter's scaffold paints over it on the first frame anyway.
-    //
-    // TitleBarStyle.hidden is kept — the custom UrDownTitleBar widget replaces
-    // the native chrome.  On VirtualBox this still works because the window
-    // content area (not the chrome) is what was blank.
-    const WindowOptions options = WindowOptions(
-      size:        Size(1280, 800),
-      minimumSize: Size(760, 520),
-      center:      true,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-      title:       'UrDown',
-    );
+    // Apply window options without going through waitUntilReadyToShow.
+    await windowManager.setSize(const Size(1280, 800));
+    await windowManager.setMinimumSize(const Size(760, 520));
+    await windowManager.setAlignment(Alignment.center);
+    await windowManager.setSkipTaskbar(false);
+    await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    await windowManager.setTitle('UrDown');
+    await windowManager.setBackgroundColor(const Color(0xFF07090D));
 
-    // Primary path: works on real Mac
-    windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
+    // Show immediately — do NOT wait for lifecycle events.
+    await windowManager.show();
+    await windowManager.focus();
   }
 
   // ── 2. Init ────────────────────────────────────────────────────────────
@@ -78,14 +71,10 @@ Future<void> main() async {
   // ── 3. Launch ──────────────────────────────────────────────────────────
   runApp(const ProviderScope(child: UrDownApp()));
 
-  // ── 4. Fallback window show (fixes VirtualBox + any env where
-  //       lifecycle events are unreliable) ────────────────────────────────
-  // runApp() returns immediately after scheduling widget build.
-  // We wait 300 ms for the first frame, then force-show if still hidden.
+  // ── 4. Safety net — re-show after first frame in case anything hid it ─
   if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final visible = await windowManager.isVisible();
-    if (!visible) {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!await windowManager.isVisible()) {
       await windowManager.show();
       await windowManager.focus();
     }
